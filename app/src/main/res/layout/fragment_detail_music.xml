@@ -8,6 +8,7 @@
     android:id="@+id/detail_music_fragment"
     android:orientation="vertical"
     android:background="#fff"
+    android:layoutDirection="ltr"
     android:padding="10dp"
     tools:context=".controller.controller.DetailMusicFragment">
 

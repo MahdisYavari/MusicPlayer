@@ -3,19 +3,21 @@ package com.example.musicplayer.controller.controller;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
-import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -32,7 +34,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.musicplayer.R;
 import com.example.musicplayer.controller.model.Album;
 import com.example.musicplayer.controller.model.Artist;
-import com.example.musicplayer.controller.model.Music;
 import com.example.musicplayer.controller.model.State;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 
@@ -44,18 +45,20 @@ import java.util.List;
  */
 public class TabFragment extends Fragment {
     public static final String ARG_POSITION_TAB = "arg_position_tab";
-    private BeatBox mBeatBox;
-    private adapter mAdapter;
+    public static final int RUNTIME_PERMISSION_CODE = 0;
+    private MusicRepository mMusicRepository;
+    private itemClickCallBacks mCallBacks;
+    private BottomSheetBehavior behavior;
     private TextView mTextViewDuration;
     private RecyclerView mRecyclerView;
-    private View mView, mView2;
-    FrameLayout frameLayout;
-    private BottomSheetBehavior behavior;
-    public static final int RUNTIME_PERMISSION_CODE = 0;
+    private boolean musicBound = false;
     TextView singerName, musicName;
+    private Intent playIntent;
+    private View mView, mView2;
+    private adapter mAdapter;
+    FrameLayout frameLayout;
     private State mTabState;
     ImageView singerImage;
-    private itemClickCallBacks mCallBacks;
 
     public static TabFragment newInstance(State state) {
 
@@ -74,8 +77,34 @@ public class TabFragment extends Fragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         AndroidRuntimePermission();
-        mBeatBox = BeatBox.getInstance(getContext());
+        mMusicRepository = MusicRepository.getInstance(getContext());
         mTabState = (State) getArguments().getSerializable(ARG_POSITION_TAB);
+    }
+
+    private ServiceConnection mServiceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+            MusicRepository.MusicBinder binder = (MusicRepository.MusicBinder) iBinder;
+            mMusicRepository = binder.getService();
+            mMusicRepository.loadMusic();
+            musicBound = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+            musicBound = false;
+        }
+    };
+
+    @Override
+    public void onStart() {
+        super.onStart();
+
+        if(playIntent == null){
+            playIntent = new Intent(getContext() , MusicRepository.class);
+            getContext().bindService(playIntent,mServiceConnection,Context.BIND_AUTO_CREATE);
+            getContext().startService(playIntent);
+        }
     }
 
     @Override
@@ -105,15 +134,15 @@ public class TabFragment extends Fragment {
 
         if (mTabState == State.MUSICS) {
             mRecyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
-            mAdapter = new adapter(mBeatBox.getMusic());
+            mAdapter = new adapter(mMusicRepository.getMusic());
             mRecyclerView.setAdapter(mAdapter);
         } else if (mTabState == State.ALBUM) {
             mRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), 2));
-            mAdapter = new adapter(mBeatBox.getAlbum());
+            mAdapter = new adapter(mMusicRepository.getAlbum());
             mRecyclerView.setAdapter(mAdapter);
         } else if (mTabState == State.SINGERS) {
             mRecyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
-            mAdapter = new adapter(mBeatBox.getArtist());
+            mAdapter = new adapter(mMusicRepository.getArtist());
             mRecyclerView.setAdapter(mAdapter);
         }
 
@@ -137,7 +166,7 @@ public class TabFragment extends Fragment {
 
     private class MusicHolder extends RecyclerView.ViewHolder {
 
-        private Music mMusic;
+        private com.example.musicplayer.controller.model.Music mMusic;
         private TextView mTextViewMusic, mTextViewSinger;
         private ImageView mImageView;
 
@@ -160,16 +189,21 @@ public class TabFragment extends Fragment {
             });
         }
 
-        public void bind(Music music) {
+        public void bind(com.example.musicplayer.controller.model.Music music) {
             this.mMusic = music;
             mTextViewMusic.setText(music.getNameMusic());
-            mImageView.setImageBitmap(BitmapFactory.decodeFile(mMusic.getmAlbumPath()));
-            mTextViewDuration.setText(mBeatBox.formatDuration(music.getmDuration()));
+            if (mMusic.getmAlbumPath()== null){
+                mImageView.setImageResource(R.drawable.music_img);
+
+            }else{
+                mImageView.setImageBitmap(BitmapFactory.decodeFile(mMusic.getmAlbumPath()));
+            }
+            mTextViewDuration.setText(TabFragment.this.mMusicRepository.formatDuration(music.getmDuration()));
         }
     }
 
     private class AlbumHolder extends RecyclerView.ViewHolder {
-        private CardView mCardview;
+        private CardView mCardView;
         private Album mAlbum;
         private TextView mTextViewAlbum, mTextViewSinger;
         private ImageView mImageViewAlbum;
@@ -181,16 +215,17 @@ public class TabFragment extends Fragment {
         }
 
         private void findView(@NonNull View itemView) {
-            mCardview = itemView.findViewById(R.id.card_view);
+            mCardView = itemView.findViewById(R.id.card_view);
             mTextViewAlbum = itemView.findViewById(R.id.text_view_album);
             mImageViewAlbum = itemView.findViewById(R.id.image_view_album);
             mTextViewSinger = itemView.findViewById(R.id.text_view_singer_album);
 
-            mCardview.setOnClickListener(new View.OnClickListener() {
+            mCardView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
                     getActivity().getSupportFragmentManager().beginTransaction()
-                            .replace(R.id.activity_view_pager, DetailMusicFragment.newInstance(mAlbum.getAlbumId(),mTabState))
+                            .replace(R.id.activity_view_pager, DetailMusicFragment
+                                    .newInstance(mAlbum.getAlbumId(), mTabState))
                             .addToBackStack(null).commit();
                 }
             });
@@ -200,8 +235,11 @@ public class TabFragment extends Fragment {
             this.mAlbum = album;
             mTextViewAlbum.setText(album.getAlbumName());
             mTextViewSinger.setText(album.getArtistName());
-            if (mAlbum.getPath() != null)
+            if (mAlbum.getPath() != null){
                 mImageViewAlbum.setImageBitmap(BitmapFactory.decodeFile(mAlbum.getPath()));
+            }else{
+                mImageViewAlbum.setImageResource(R.drawable.music_img);
+            }
         }
     }
 
@@ -224,7 +262,7 @@ public class TabFragment extends Fragment {
                 @Override
                 public void onClick(View view) {
                     getActivity().getSupportFragmentManager().beginTransaction()
-                            .replace(R.id.activity_view_pager, DetailMusicFragment.newInstance(mArtist.getIdArtist(),mTabState))
+                            .replace(R.id.activity_view_pager, DetailMusicFragment.newInstance(mArtist.getIdArtist(), mTabState))
                             .addToBackStack(null).commit();
                 }
             });
@@ -246,7 +284,7 @@ public class TabFragment extends Fragment {
         }
 
         public int getItemViewType(int position) {
-            if (mItems.get(position) instanceof Music) {
+            if (mItems.get(position) instanceof com.example.musicplayer.controller.model.Music) {
                 return 0;
             } else if (mItems.get(position) instanceof Album) {
                 return 1;
@@ -285,7 +323,7 @@ public class TabFragment extends Fragment {
         public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
 
             if (mTabState == State.MUSICS && holder.getItemViewType() == 0) {
-                ((MusicHolder) holder).bind((Music) mItems.get(position));
+                ((MusicHolder) holder).bind((com.example.musicplayer.controller.model.Music) mItems.get(position));
             } else if (mTabState == State.ALBUM && holder.getItemViewType() == 1) {
                 ((AlbumHolder) holder).bind((Album) mItems.get(position));
             } else if (mTabState == State.SINGERS && holder.getItemViewType() == 2) {
@@ -357,7 +395,7 @@ public class TabFragment extends Fragment {
     }
 
     public interface itemClickCallBacks {
-        void MusicHolderClick(State tabState, Music music);
+        void MusicHolderClick(State tabState, com.example.musicplayer.controller.model.Music music);
     }
 
 

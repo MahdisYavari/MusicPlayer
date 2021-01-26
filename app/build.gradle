@@ -32,6 +32,8 @@ dependencies {
     implementation 'de.hdodenhof:circleimageview:3.0.1'
     implementation "org.permissionsdispatcher:permissionsdispatcher:4.6.0"
     annotationProcessor "org.permissionsdispatcher:permissionsdispatcher-processor:4.6.0"
+    implementation 'de.hdodenhof:circleimageview:3.1.0'
+
 
 
 }

@@ -1,33 +1,46 @@
 package com.example.musicplayer.controller.controller;
 
+import android.app.Service;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.Context;
+import android.content.Intent;
 import android.database.Cursor;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.os.Binder;
+import android.os.IBinder;
+import android.os.PowerManager;
 import android.provider.MediaStore;
 import android.widget.Toast;
+
+import androidx.annotation.Nullable;
+
 import com.example.musicplayer.controller.model.Album;
 import com.example.musicplayer.controller.model.Artist;
 import com.example.musicplayer.controller.model.Music;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
-public class BeatBox {
 
-    private List<Music> mMusic;
+public class MusicRepository extends Service implements MediaPlayer.OnPreparedListener,
+        MediaPlayer.OnErrorListener {
+
+    private final IBinder musicBinder = new MusicBinder();
+    private static MusicRepository instance;
+    private BitBoxCallBacks mCallBacks;
+    ContentResolver contentResolver;
+    private MediaPlayer mediaPlayer;
     private List<Album> mAlbumList;
     private List<Artist> mArtist;
-    ContentResolver contentResolver;
-    private Context mContext;
-    private MediaPlayer mediaPlayer;
-    private static BeatBox instance;
-    private Uri uri;
+    private List<Music> mMusic;
     public Music currentMusic;
+    private Context mContext;
     private Cursor cursor;
-    private BitBoxCallBacks mCallBacks;
+    private Uri uri;
 
     public void setCallBacks(BitBoxCallBacks mCallBacks) {
         this.mCallBacks = mCallBacks;
@@ -37,9 +50,9 @@ public class BeatBox {
         return mediaPlayer;
     }
 
-    public static BeatBox getInstance(Context context) {
+    public static MusicRepository getInstance(Context context) {
         if (instance == null) {
-            instance = new BeatBox(context);
+            instance = new MusicRepository(context);
         }
         return instance;
     }
@@ -57,7 +70,7 @@ public class BeatBox {
         return mArtist;
     }
 
-    private BeatBox(Context context) {
+    private MusicRepository(Context context) {
 
         mediaPlayer = new MediaPlayer();
         mContext = context.getApplicationContext();
@@ -101,23 +114,24 @@ public class BeatBox {
         currentMusic = music;
         music.getNameMusic();
 
-            mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+        mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
 
-                int played =1;
-                @Override
-                public void onCompletion(MediaPlayer mediaPlayer) {
-                    if(played<20){
-                        played++;
-                        mediaPlayer.start();
-                        mediaPlayer.seekTo(0);
-                        nextMusic();
-                        mCallBacks.setUi(currentMusic);
-                    }
+            int played = 1;
+
+            @Override
+            public void onCompletion(MediaPlayer mediaPlayer) {
+                if (played < 20) {
+                    played++;
+                    mediaPlayer.start();
+                    mediaPlayer.seekTo(0);
+                    nextMusic();
+                    mCallBacks.setUi(currentMusic);
                 }
-            });
+            }
+        });
     }
 
-    public Music nextMusic() {
+    public com.example.musicplayer.controller.model.Music nextMusic() {
         int index = mMusic.indexOf(currentMusic);
         Music nextMusic = mMusic.get((index + 1) % mMusic.size());
         currentMusic = nextMusic;
@@ -126,7 +140,7 @@ public class BeatBox {
         return nextMusic;
     }
 
-    public Music prevMusic() {
+    public com.example.musicplayer.controller.model.Music prevMusic() {
         int index = mMusic.indexOf(currentMusic);
         Music prevMusic = mMusic.get((mMusic.size() + (index - 1)) % mMusic.size());
         currentMusic = prevMusic;
@@ -143,14 +157,14 @@ public class BeatBox {
         return repeatOne;
     }
 
-    public Music shuffleMusic(){
+    public Music shuffleMusic() {
         Random rand = new Random();
-         int currentMusicIndex = rand.nextInt((mMusic.size() - 1)  + 1);
-         Music shuffle = mMusic.get(currentMusicIndex);
-         currentMusic = shuffle;
-         mCallBacks.setUi(currentMusic);
-         play(shuffle);
-         return shuffle;
+        int currentMusicIndex = rand.nextInt((mMusic.size() - 1) + 1);
+        Music shuffle = mMusic.get(currentMusicIndex);
+        currentMusic = shuffle;
+        mCallBacks.setUi(currentMusic);
+        play(shuffle);
+        return shuffle;
     }
 
     public List<Music> loadMusic() {
@@ -168,7 +182,7 @@ public class BeatBox {
         );
 
         if (cursor == null || !cursor.moveToFirst()) {
-            Toast.makeText(mContext, "No Music Found on SD Card.", Toast.LENGTH_LONG);
+            Toast.makeText(mContext, "No MusicRepository Found on SD Card.", Toast.LENGTH_LONG);
         } else {
             do {
                 String songSinger = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.TITLE));
@@ -177,7 +191,7 @@ public class BeatBox {
                 String songAlbum = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM));
                 long artistId = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST_ID));
                 long albumId = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID));
-                Music music = new Music(songSinger, getAlbumMusic(songAlbum), musicDuration, SongId,albumId,artistId);
+                Music music = new Music(songSinger, getAlbumMusic(songAlbum), musicDuration, SongId, albumId, artistId);
                 musicList.add(music);
 
             } while (cursor.moveToNext());
@@ -213,7 +227,8 @@ public class BeatBox {
         }
         return albumList;
     }
-    public List<Artist> loadArtist(){
+
+    public List<Artist> loadArtist() {
 
         List<Artist> artistList = new ArrayList<>();
         contentResolver = mContext.getContentResolver();
@@ -225,14 +240,14 @@ public class BeatBox {
                 null,
                 null
         );
-        if(cursor != null && cursor.moveToFirst()){
-            do{
+        if (cursor != null && cursor.moveToFirst()) {
+            do {
                 long artistId = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Artists._ID));
                 String artistName = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Artists.ARTIST));
                 int numberOfSongs = cursor.getInt(cursor.getColumnIndex(MediaStore.Audio.Artists.NUMBER_OF_TRACKS));
-                Artist artist  = new Artist(artistName,artistId,numberOfSongs);
+                Artist artist = new Artist(artistName, artistId, numberOfSongs);
                 artistList.add(artist);
-            }while (cursor.moveToNext());
+            } while (cursor.moveToNext());
             cursor.close();
         }
         return artistList;
@@ -241,35 +256,76 @@ public class BeatBox {
     public String formatDuration(long duration) {
         int seconds = (int) duration / 1000;
         int minutes = seconds / 60;
-        seconds%=60;
-        return String.format(Locale.ENGLISH,"%02d",minutes)+
-                ":"+String.format(Locale.ENGLISH,"%02d",seconds);
+        seconds %= 60;
+        return String.format(Locale.ENGLISH, "%02d", minutes) +
+                ":" + String.format(Locale.ENGLISH, "%02d", seconds);
 
     }
 
     public List<Music> getMusicOfAlbum(Long albumId) {
         List<Music> musicListAlbum = new ArrayList<>();
-        for (Music music : loadMusic()){
-            if(music.getAlbumId()==albumId)
+        for (Music music : loadMusic()) {
+            if (music.getAlbumId() == albumId)
                 musicListAlbum.add(music);
         }
         return musicListAlbum;
     }
 
-    public List<Music> getMusicOfArtist(Long artistId){
+    public List<Music> getMusicOfArtist(Long artistId) {
         List<Music> musicListArtist = new ArrayList<>();
-        for(Music music : loadMusic()){
-            if(music.getArtistId()== artistId)
+        for (Music music : loadMusic()) {
+            if (music.getArtistId() == artistId)
                 musicListArtist.add(music);
         }
         return musicListArtist;
     }
 
-    public interface BitBoxCallBacks{
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent) {
+        return musicBinder;
+    }
+
+    @Override
+    public boolean onUnbind(Intent intent) {
+        mediaPlayer.stop();
+        mediaPlayer.release();
+        return false;
+    }
+
+    @Override
+    public boolean onError(MediaPlayer mediaPlayer, int i, int i1) {
+        return false;
+    }
+
+    @Override
+    public void onPrepared(MediaPlayer mediaPlayer) {
+        mediaPlayer.start();
+    }
+
+    public interface BitBoxCallBacks {
         void setUi(Music music);
     }
 
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        initMusicPlayer();
+    }
 
+    public class MusicBinder extends Binder {
+        MusicRepository getService() {
+            return MusicRepository.this;
+        }
+    }
+
+    private void initMusicPlayer() {
+        mediaPlayer.setWakeMode(getApplicationContext(),
+                PowerManager.PARTIAL_WAKE_LOCK);
+        mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+        mediaPlayer.setOnPreparedListener(this);
+        mediaPlayer.setOnErrorListener(this);
+    }
 }
 
 

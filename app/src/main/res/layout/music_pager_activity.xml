@@ -5,6 +5,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/activity_view_pager"
     android:layout_width="match_parent"
+    android:layoutDirection="ltr"
     android:layout_height="match_parent"
     tools:context=".controller.controller.MusicPagerActivity">
 
@@ -34,7 +35,7 @@
         android:id="@+id/bottom_sheet_layout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#FFFFFF"
+        android:background="#EBCBCB"
         app:behavior_hideable="true"
         app:behavior_peekHeight="100dp"
         app:layout_behavior="@string/bottom_sheet_behavior">
@@ -60,8 +61,9 @@
                     android:id="@+id/txt_singer"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textColor="#FFF"
+                    android:textColor="#E72379"
                     android:textSize="18sp"
+                    android:fontFamily="@font/vazir_medium_fd"
                     android:layout_marginTop="20dp"
                     android:layout_marginLeft="20dp"/>
                 <TextView
@@ -69,7 +71,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:textColor="#AAA3A3"
+                    android:textColor="#E72379"
+                    android:fontFamily="@font/vazir_medium_fd"
                     android:textSize="15sp"
                     android:layout_marginLeft="20dp"/>
 
@@ -80,14 +83,14 @@
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_gravity="center_vertical"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:gravity="center"
                 android:orientation="vertical">
 
                 <ImageView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
                     android:src="@drawable/image_equlizer"
                     tools:ignore="MissingConstraints" />
 

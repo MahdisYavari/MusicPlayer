@@ -18,14 +18,13 @@ import androidx.fragment.app.FragmentStatePagerAdapter;
 import androidx.viewpager.widget.ViewPager;
 
 import com.example.musicplayer.R;
-import com.example.musicplayer.controller.model.Music;
 import com.example.musicplayer.controller.model.State;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.tabs.TabLayout;
 
 import java.util.ArrayList;
 
-public class MusicPagerActivity extends AppCompatActivity implements BeatBox.BitBoxCallBacks,
+public class MusicPagerActivity extends AppCompatActivity implements MusicRepository.BitBoxCallBacks,
         TabFragment.itemClickCallBacks,DetailMusicFragment.itemClickCallBacks {
 
     private ViewPager mViewPager;
@@ -33,7 +32,7 @@ public class MusicPagerActivity extends AppCompatActivity implements BeatBox.Bit
     private BottomSheetBehavior behavior;
     private ImageView imageButtonPrevious, imageButtonNext,
             imageButtonPlay, imageShuffle, imageRepeatAll,singerImage;
-    private BeatBox mBeatBox;
+    private MusicRepository mMusicRepository;
     boolean flagRepeat, flagShuffle;
     private FrameLayout frameLayout;
     private TextView singerName, musicName;
@@ -45,7 +44,7 @@ public class MusicPagerActivity extends AppCompatActivity implements BeatBox.Bit
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.music_pager_activity);
-        mBeatBox = BeatBox.getInstance(this);
+        mMusicRepository = MusicRepository.getInstance(this);
 
         initUi();
         initListeners();
@@ -82,9 +81,9 @@ public class MusicPagerActivity extends AppCompatActivity implements BeatBox.Bit
     }
     private Runnable UpdateSongTime = new Runnable() {
         public void run() {
-            int time = mBeatBox.getMediaPlayer().getCurrentPosition();
+            int time = mMusicRepository.getMediaPlayer().getCurrentPosition();
             handler.postDelayed(this, 100);
-            mSeekBar.setMax(mBeatBox.getMediaPlayer().getDuration());
+            mSeekBar.setMax(mMusicRepository.getMediaPlayer().getDuration());
             mSeekBar.setProgress(time);
         }
     };
@@ -94,7 +93,7 @@ public class MusicPagerActivity extends AppCompatActivity implements BeatBox.Bit
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (fromUser) {
-                    mBeatBox.getMediaPlayer().seekTo(progress);
+                    mMusicRepository.getMediaPlayer().seekTo(progress);
                 }
             }
 
@@ -113,11 +112,11 @@ public class MusicPagerActivity extends AppCompatActivity implements BeatBox.Bit
             @Override
             public void onClick(View view) {
 
-                if (mBeatBox.getMediaPlayer().isPlaying()) {
-                    mBeatBox.getMediaPlayer().pause();
+                if (mMusicRepository.getMediaPlayer().isPlaying()) {
+                    mMusicRepository.getMediaPlayer().pause();
                     imageButtonPlay.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.image_music, null));
                 } else {
-                    mBeatBox.getMediaPlayer().start();
+                    mMusicRepository.getMediaPlayer().start();
                     imageButtonPlay.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.image_pause, null));
                 }
             }
@@ -127,11 +126,11 @@ public class MusicPagerActivity extends AppCompatActivity implements BeatBox.Bit
             public void onClick(View view) {
 
                 if (flagRepeat == true) {
-                    mBeatBox.repeatOne();
+                    mMusicRepository.repeatOne();
                 } else if (flagRepeat == false && flagShuffle == true) {
-                    mBeatBox.shuffleMusic();
+                    mMusicRepository.shuffleMusic();
                 } else
-                    mBeatBox.nextMusic();
+                    mMusicRepository.nextMusic();
             }
         });
 
@@ -150,11 +149,11 @@ public class MusicPagerActivity extends AppCompatActivity implements BeatBox.Bit
             public void onClick(View view) {
 
                 if (flagRepeat == true) {
-                    mBeatBox.repeatOne();
+                    mMusicRepository.repeatOne();
                 } else if (flagRepeat == false && flagShuffle == true) {
-                    mBeatBox.shuffleMusic();
+                    mMusicRepository.shuffleMusic();
                 } else
-                    mBeatBox.prevMusic();
+                    mMusicRepository.prevMusic();
             }
         });
         imageRepeatAll.setOnClickListener(new View.OnClickListener() {
@@ -188,36 +187,36 @@ public class MusicPagerActivity extends AppCompatActivity implements BeatBox.Bit
         musicName =findViewById(R.id.txt_singer);
         singerImage = findViewById(R.id.singer_picture);
         mSeekBar = findViewById(R.id.seek_bar);
-        mBeatBox.setCallBacks(this);
+        mMusicRepository.setCallBacks(this);
 
     }
 
     @Override
-    public void setUi(Music music) {
+    public void setUi(com.example.musicplayer.controller.model.Music music) {
         musicName.setText(music.getNameMusic());
         singerImage.setImageBitmap(BitmapFactory.decodeFile(music.getmAlbumPath()));
     }
 
     @Override
-    public void MusicHolderClick(State tabState, Music music) {
+    public void MusicHolderClick(State tabState, com.example.musicplayer.controller.model.Music music) {
         if(tabState ==State.MUSICS){
             playMusic(music);
         }
     }
 
     @Override
-    public void musicClick(Music music) {
+    public void musicClick(com.example.musicplayer.controller.model.Music music) {
         playMusic(music);
     }
 
-    private void playMusic(Music music) {
+    private void playMusic(com.example.musicplayer.controller.model.Music music) {
         behavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
         singerImage.setImageBitmap(BitmapFactory.decodeFile(music.getmAlbumPath()));
-        mBeatBox.play(music);
+        mMusicRepository.play(music);
         musicName.setText(music.getNameMusic());
         singerName.setText(music.getNameSinger());
-        if (mBeatBox.getMediaPlayer().isPlaying()) {
-            mBeatBox.getMusicUri(music);
+        if (mMusicRepository.getMediaPlayer().isPlaying()) {
+            mMusicRepository.getMusicUri(music);
             imageButtonPlay.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.image_pause, null));
         } else {
             imageButtonPlay.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.image_music, null));

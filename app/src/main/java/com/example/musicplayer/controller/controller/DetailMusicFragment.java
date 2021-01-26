@@ -2,7 +2,6 @@ package com.example.musicplayer.controller.controller;
 
 
 import android.content.Context;
-import android.content.Intent;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
 
@@ -17,7 +16,6 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 import com.example.musicplayer.R;
-import com.example.musicplayer.controller.model.Music;
 import com.example.musicplayer.controller.model.State;
 
 import java.util.List;
@@ -29,7 +27,7 @@ public class DetailMusicFragment extends Fragment {
     public static final String ARG_ID = "arg_id";
     public static final String ARG_MUSIC_NAME = "arg_musicName";
     public static final String ARG_TAB_STATE = "arg_tab_state";
-    BeatBox mBeatBox;
+    MusicRepository mMusicRepository;
     private RecyclerView mRecyclerView;
     private MusicAdapter mAdapter;
     private long mId;
@@ -55,7 +53,7 @@ public class DetailMusicFragment extends Fragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        mBeatBox = BeatBox.getInstance(getContext());
+        mMusicRepository = MusicRepository.getInstance(getContext());
         mId = getArguments().getLong(ARG_ID);
         mState = (State) getArguments().getSerializable(ARG_TAB_STATE);
         // mMusicName = getArguments().getString(ARG_MUSIC_NAME);
@@ -88,11 +86,11 @@ public class DetailMusicFragment extends Fragment {
     private void setUpAdapter() {
         if(State.SINGERS == mState) {
             mRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-            mAdapter = new MusicAdapter(mBeatBox.getMusicOfArtist(mId));
+            mAdapter = new MusicAdapter(mMusicRepository.getMusicOfArtist(mId));
             mRecyclerView.setAdapter(mAdapter);
         }else if(State.ALBUM == mState) {
             mRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-            mAdapter = new MusicAdapter(mBeatBox.getMusicOfAlbum(mId));
+            mAdapter = new MusicAdapter(mMusicRepository.getMusicOfAlbum(mId));
             mRecyclerView.setAdapter(mAdapter);
         }
     }
@@ -102,7 +100,7 @@ public class DetailMusicFragment extends Fragment {
 
     }
     private class MusicArtistHolder extends RecyclerView.ViewHolder{
-        private Music mMusic;
+        private com.example.musicplayer.controller.model.Music mMusic;
         private ImageView artistImage;
         private TextView singerName,musicName;
 
@@ -120,7 +118,7 @@ public class DetailMusicFragment extends Fragment {
             });
         }
 
-        public void bind(Music music){
+        public void bind(com.example.musicplayer.controller.model.Music music){
             this.mMusic = music;
             singerName.setText(mMusic.getNameSinger());
             musicName.setText(mMusic.getNameMusic());
@@ -130,9 +128,9 @@ public class DetailMusicFragment extends Fragment {
 
 
     private class MusicAdapter extends RecyclerView.Adapter<MusicArtistHolder> {
-        List<Music> musicList;
+        List<com.example.musicplayer.controller.model.Music> musicList;
 
-        public MusicAdapter(List<Music> musicList) {
+        public MusicAdapter(List<com.example.musicplayer.controller.model.Music> musicList) {
             this.musicList = musicList;
         }
 
@@ -156,7 +154,7 @@ public class DetailMusicFragment extends Fragment {
         }
     }
     public interface itemClickCallBacks{
-        void musicClick(Music music);
+        void musicClick(com.example.musicplayer.controller.model.Music music);
     }
 
 
