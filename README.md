@@ -2,7 +2,7 @@ This project is a simple music player that you can listen to your musics by usin
 
 It has 3 tabs . The first one shows all your musics and the second tab contains the albums of every singer and the last tab shows all your singers and their musics .
 
-Dependencies :
+Features 
 
 1) TabLayout
 2) ViewPager
